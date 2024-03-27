@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Unity WebGL Player | TestCheck</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico" />
+    <link rel="stylesheet" href="TemplateData/style.css" />
+  </head>
+  <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width="960" height="600" tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"></div>
+      <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">TestCheck</div>
+      </div>
+    </div>
+    <script>
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var warningBanner = document.querySelector("#unity-warning");
+
+      const redirectURI = "https://ammandev.github.io/ExternalCall/?refetch=false";
+      const clientID = "1221026476862869564";
+      const clientSecret = "BmnZ0dF7BqlvGCvq7S05Msx1SCgpIH02";
+
+      function getURLParameter(name) {
+        return (
+          decodeURIComponent(
+            (new RegExp("[?|&]" + name + "=" + "([^&;]+?)(&|#|;|$)").exec(
+              location.search
+            ) || [null, ""])[1].replace(/\+/g, "%20")
+          ) || null
+        );
+      }
+
+      const refetch = getURLParameter("refetch");
+      function loadDiscordSDK() {
+        const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientID}&redirect_uri=${encodeURIComponent(
+          redirectURI
+        )}&response_type=code&scope=${encodeURIComponent("identify")}`;
+        window.location.href = authUrl;
+      }
+
+      const code = getURLParameter("code");
+
+      async function getToken() {
+        let options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            client_id: clientID,
+            client_secret: clientSecret,
+            grant_type: "client_credentials",
+            code,
+            redirect_uri: `${redirectURI}?refetch=false`,
+            scope: "identify email",
+          }),
+        };
+
+        let discord_data = await fetch(
+          "https://discord.com/api/oauth2/token",
+          options
+        )
+          .then((response) => {
+            return response.json();
+          })
+          .then((response) => {
+            return response.access_token;
+          });
+
+        return discord_data;
+      }
+
+      async function getUserInfo() {
+        if (refetch !== "false") {
+          loadDiscordSDK();
+        } else {
+          const token = await getToken();
+
+          const userInfo = await fetch(
+            "https://discord.com/api/v10/users/@me",
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          )
+            .then((response) => {
+              return response.json();
+            })
+            .then((data) => {
+              return data;
+            })
+            .catch((error) => {
+              console.error("Error fetching user info:", error);
+              throw error;
+            });
+
+          return await userInfo;
+        }
+      }
+
+      async function getUserGuildInfo() {
+        const botToken = "MTIyMTAyNjQ3Njg2Mjg2OTU2NA.G9UEtB.8aCvX1f8B4T30RkMKO6zHm2vGrOz8fRKuJxKl8";
+
+        const guildInfo = await fetch(
+          "https://discord.com/api/v10/users/@me/guilds",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bot ${botToken}`,
+            },
+          }
+        )
+          .then((response) => {
+            return response.json();
+          })
+          .then((data) => {
+            return data;
+          })
+          .catch((error) => {
+            console.error("Error fetching guild info:", error);
+            throw error;
+          });
+
+        return await guildInfo;
+      }
+
+      let userInfo = getUserInfo()
+        .then((userData) => {
+          return userData;
+        })
+        .catch((error) => {
+          console.error("Error getting user info:", error);
+        });
+
+      let guildInfo = getUserGuildInfo()
+        .then((guildData) => {
+          return guildData;
+        })
+        .catch((error) => {
+          console.error("Error getting guild info:", error);
+        });
+
+      function passDataToUnity() {
+        // Assuming you have a Unity instance named 'unityInstance'
+      }
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length
+            ? "block"
+            : "none";
+        }
+        var div = document.createElement("div");
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == "error") div.style = "background: red; padding: 10px;";
+        else {
+          if (type == "warning")
+            div.style = "background: yellow; padding: 10px;";
+          setTimeout(function () {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/Build.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/Build.data",
+        frameworkUrl: buildUrl + "/Build.framework.js",
+        codeUrl: buildUrl + "/Build.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Toli",
+        productName: "Drip Shoot Shot",
+        productVersion: "1.0",
+        showBanner: unityShowBanner,
+      };
+
+      // By default Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+
+        var meta = document.createElement("meta");
+        meta.name = "viewport";
+        meta.content =
+          "width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes";
+        document.getElementsByTagName("head")[0].appendChild(meta);
+        container.className = "unity-mobile";
+
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
+
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+      } else {
+        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+
+        canvas.style.width = "960px";
+        canvas.style.height = "600px";
+      }
+
+      loadingBar.style.display = "block";
+      var unityInstance2; // Declare unityInstance at a higher scope if not already declared.
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = 100 * progress + "%";
+        })
+          .then(async (unityInstance) => {
+            unityInstance2 = unityInstance;
+            loadingBar.style.display = "none";
+            fullscreenButton.onclick = () => {
+              unityInstance.SetFullscreen(1);
+            };
+            var encryptedData = getURLParameter("data");
+            const user = await userInfo;
+            const guild = await guildInfo;
+            const finalData = {
+              user,
+              guild,
+            };
+            console.log({ finalData })
+            unityInstance.SendMessage(
+              "Data",
+              "ReceiveEncryptedData",
+              encryptedData
+            );
+          })
+          .catch((message) => {
+            alert(message);
+          });
+      };
+
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
