@@ -29,33 +29,32 @@
         // Set a global variable to indicate if the user is on iOS
         window.isIOSDevice = isIOS();
 
-        function toggleFullscreen() {
+        function toggleFullScreen() {
             var canvas = document.getElementById('unity-canvas');
-            if (window.isIOSDevice) {
-                if (!document.fullscreenElement && !document.mozFullScreenElement &&
-                    !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                    // Enter fullscreen mode
-                    document.body.classList.add('fullscreen');
-                    canvas.classList.add('fullscreen');
-                } else {
-                    // Exit fullscreen mode
-                    document.body.classList.remove('fullscreen');
-                    canvas.classList.remove('fullscreen');
+            if (document.fullscreenElement || document.webkitFullscreenElement ||
+                document.mozFullScreenElement || document.msFullscreenElement) {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
                 }
             } else {
-                if (!document.fullscreenElement && !document.mozFullScreenElement &&
-                    !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                    var requestFullScreen = canvas.requestFullscreen || canvas.mozRequestFullScreen ||
-                        canvas.webkitRequestFullscreen || canvas.msRequestFullscreen;
-                    if (requestFullScreen) {
-                        requestFullScreen.call(canvas);
-                    }
+                if (canvas.requestFullscreen) {
+                    canvas.requestFullscreen();
+                } else if (canvas.webkitRequestFullscreen) {
+                    canvas.webkitRequestFullscreen();
+                } else if (canvas.mozRequestFullScreen) {
+                    canvas.mozRequestFullScreen();
+                } else if (canvas.msRequestFullscreen) {
+                    canvas.msRequestFullscreen();
                 } else {
-                    var exitFullScreen = document.exitFullscreen || document.mozCancelFullScreen ||
-                        document.webkitExitFullscreen || document.msExitFullscreen;
-                    if (exitFullScreen) {
-                        exitFullScreen.call(document);
-                    }
+                    // Fallback for iOS
+                    document.body.classList.add('fullscreen');
+                    canvas.classList.add('fullscreen');
                 }
             }
         }
